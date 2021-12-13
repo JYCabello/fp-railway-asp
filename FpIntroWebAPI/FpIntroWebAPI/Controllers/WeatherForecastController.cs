@@ -35,6 +35,17 @@ public class WeatherForecastController : ControllerBase
     ).Apply(EdgeOfTheWorld);
 
     /*
+     * The goal of this function is to show what linq does to do the binding.
+     */
+    [HttpGet("getuglylinq", Name = "GetWeatherForecastUgly")]
+    public Task<ActionResult<IEnumerable<WeatherForecast>>> GetButDoingLinqsJob() =>
+        SecurityService.GetUser(Request.Headers).Apply(Lift)
+            .Bind(user => SecurityService.CanSeeForecast(user).Apply(opt => Lift(opt, user)).Map(token => (user, token)))
+            .Bind(tuple => SecurityService.GetNumberOfResults(tuple.user).Apply(Lift).Map(num => (tuple.token, num)))
+            .Map(tuple => GetForecast(tuple.token, tuple.num))
+            .Apply(EdgeOfTheWorld);
+
+    /*
      * The goal of this function is to do the binding in an "ugly" way, so it becomes obvious that those expressions are a bind.
      */
     [HttpGet("getugly", Name = "GetWeatherForecastUgly")]
@@ -52,8 +63,13 @@ public class WeatherForecastController : ControllerBase
         Result<SeeForecastPermissionToken, Errors> tokenOrError =
             maybeToken.Match(
                 Ok<SeeForecastPermissionToken, Errors>,
-                () => new Errors.Unauthorized("Unautorized to forecast")
+                () => Error<Errors>(new Errors.Unauthorized("Unautorized to forecast"))
             );
+
+        // Not actually being used, it's just showing that matching an option to Ok in Some and Error in None is a case
+        // common enough that it warrants a helper function (Result).
+        Result<SeeForecastPermissionToken, Errors> tokenOrErrorAlternative =
+            maybeToken.Result<Errors>(() => new Errors.Unauthorized("Unautorized to forecast"));
 
         Result<(SeeForecastPermissionToken, int), Errors> dataToGetOrError =
             maybeNumberOfResult.Bind(num => tokenOrError.Map(token => (token, num)));
