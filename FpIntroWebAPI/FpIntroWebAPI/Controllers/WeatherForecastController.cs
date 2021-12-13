@@ -6,6 +6,7 @@ using DeFuncto.Extensions;
 using FpIntroWebAPI.Security;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Primitives;
 using static DeFuncto.Prelude;
 
 namespace FpIntroWebAPI.Controllers;
@@ -21,10 +22,8 @@ public class WeatherForecastController : ControllerBase
 
     private readonly ILogger<WeatherForecastController> _logger;
 
-    public WeatherForecastController(ILogger<WeatherForecastController> logger)
-    {
+    public WeatherForecastController(ILogger<WeatherForecastController> logger) =>
         _logger = logger;
-    }
 
     [HttpGet(Name = "GetWeatherForecast")]
     public Task<ActionResult<IEnumerable<WeatherForecast>>> Get() =>
@@ -35,7 +34,37 @@ public class WeatherForecastController : ControllerBase
         select GetForecast(forecastToken, numberOfResults)
     ).Apply(EdgeOfTheWorld);
 
-    private static IEnumerable<WeatherForecast> GetForecast(SeeForecastPermission _, int numberOfResults) =>
+    /*
+     * The goal of this function is to do the binding in an "ugly" way, so it becomes obvious that those expressions are a bind.
+     */
+    [HttpGet("getugly", Name = "GetWeatherForecastUgly")]
+    public async Task<ActionResult<IEnumerable<WeatherForecast>>> GetButUgly()
+    {
+        Option<User> maybeUser = SecurityService.GetUser(Request.Headers);
+
+        Option<SeeForecastPermissionToken> maybeToken = maybeUser.Bind(user => SecurityService.CanSeeForecast(user));
+
+        Result<int, Errors> maybeNumberOfResult = await maybeUser.Match(
+            user => SecurityService.GetNumberOfResults(user).Map(Ok<int, Errors>),
+            () => new Errors.Unauthorized("User was not found").Apply(Error<int, Errors>).Apply(Task.FromResult)
+        );
+
+        Result<SeeForecastPermissionToken, Errors> tokenOrError =
+            maybeToken.Match(
+                Ok<SeeForecastPermissionToken, Errors>,
+                () => new Errors.Unauthorized("Unautorized to forecast")
+            );
+
+        Result<(SeeForecastPermissionToken, int), Errors> dataToGetOrError =
+            maybeNumberOfResult.Bind(num => tokenOrError.Map(token => (token, num)));
+
+        Result<IEnumerable<WeatherForecast>, Errors> maybeForecast =
+            dataToGetOrError.Map(tuple => GetForecast(tuple.Item1, tuple.Item2));
+
+        return maybeForecast.Apply(EdgeOfTheWorldSync);
+    }
+
+    private static IEnumerable<WeatherForecast> GetForecast(SeeForecastPermissionToken _, int numberOfResults) =>
         Enumerable
             .Range(1, numberOfResults)
             .Select(index => new WeatherForecast
@@ -50,6 +79,9 @@ public class WeatherForecastController : ControllerBase
     private async Task<ActionResult<T>> EdgeOfTheWorld<T>(AsyncResult<T, Errors> result) =>
         await result.Match(t => Ok(t), MapError<T>);
 
+    private ActionResult<T> EdgeOfTheWorldSync<T>(Result<T, Errors> result) =>
+        result.Match(t => Ok(t), MapError<T>);
+
     private ActionResult<T> MapError<T>(Errors error) =>
         error switch
         {
@@ -59,7 +91,7 @@ public class WeatherForecastController : ControllerBase
 
     private ActionResult<T> OnUnauthorized<T>(Errors.Unauthorized error)
     {
-        _logger.LogError($"Someone tried to access the system\n{error.Message}");
+        _logger.LogError("Someone tried to access the system\n{Message}", error.Message);
         return Unauthorized();
     }
 
@@ -71,6 +103,9 @@ public class WeatherForecastController : ControllerBase
 
     public static AsyncResult<T, Errors> Lift<T>(Task<T> task) =>
         task.Map(Ok<T, Errors>);
+
+
+
 }
 
 
