@@ -5,7 +5,6 @@ using static DeFuncto.Prelude;
 
 namespace FpIntroWebAPI.Security;
 
-
 public static class SecurityService
 {
     private static readonly User John = new("John", Role.Nobody);
@@ -17,13 +16,13 @@ public static class SecurityService
     {
         { Guid.Parse("C7F558BA-4E7B-4521-B963-2D402CCD26C6"), John },
         { Guid.Parse("E43C80F5-62B7-424E-86E3-56BBA8F14793"), Frank },
-        { Guid.Parse("519CD0A5-65F6-47AA-9931-A87946920BF8"), Pete },
+        { Guid.Parse("519CD0A5-65F6-47AA-9931-A87946920BF8"), Pete }
     };
 
     private static readonly Dictionary<string, User> ByUserNamePassword = new()
     {
         { "frankpete", Frank },
-        { "petepete", Pete },
+        { "petepete", Pete }
     };
 
     public static Option<Du<Guid, (string, string)>> GetIdentifier(IDictionary<string, StringValues> dict)
@@ -31,7 +30,7 @@ public static class SecurityService
         try
         {
             if (dict.ContainsKey("token"))
-                return dict["token"].Apply(s => Guid.Parse(s))!.Apply(First<Guid, (string, string)>);
+                return dict["token"].Apply(s => Guid.Parse(s)).Apply(First<Guid, (string, string)>);
 
             string userName = dict["username"]!;
             string password = dict["password"]!;
@@ -49,10 +48,10 @@ public static class SecurityService
         {
             return GetIdentifier(dict)
                 .Map(
-                    du => 
+                    du =>
                         du.Match(
-                            guid => ByToken[guid]!,
-                            (tuple) => ByUserNamePassword[$"{tuple.Item1}{tuple.Item2}"]!
+                            guid => ByToken[guid],
+                            tuple => ByUserNamePassword[$"{tuple.Item1}{tuple.Item2}"]
                         )
                 );
         }
@@ -84,12 +83,12 @@ public enum Role
 
 public record User
 {
-    public string Name { get; private init; }
-    public Role Role { get; private init; }
-
     internal User(string name, Role role)
     {
         Name = name;
         Role = role;
     }
+
+    public string Name { get; private init; }
+    public Role Role { get; private init; }
 }

@@ -1,21 +1,17 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using DeFuncto;
 using DeFuncto.Extensions;
 using FpIntroWebAPI.Security;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Primitives;
 using static DeFuncto.Prelude;
 
 namespace FpIntroWebAPI.Controllers;
+
 
 [ApiController]
 [Route("[controller]")]
 public class WeatherForecastController : ControllerBase
 {
-    private static readonly string[] Summaries = new[]
+    private static readonly string[] Summaries =
     {
         "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
     };
@@ -48,9 +44,10 @@ public class WeatherForecastController : ControllerBase
     /*
      * The goal of this function is to do the binding in an "ugly" way, so it becomes obvious that those expressions are a bind.
      */
-    [HttpGet("getugly", Name = "GetWeatherForecastUgly")]
+    [HttpGet("getugly", Name = "GetWeatherForecastUglyLinq")]
     public async Task<ActionResult<IEnumerable<WeatherForecast>>> GetButUgly()
     {
+        // ReSharper disable SuggestVarOrType_Elsewhere
         Option<User> maybeUser = SecurityService.GetUser(Request.Headers);
 
         Option<SeeForecastPermissionToken> maybeToken = maybeUser.Bind(user => SecurityService.CanSeeForecast(user));
@@ -68,6 +65,7 @@ public class WeatherForecastController : ControllerBase
 
         // Not actually being used, it's just showing that matching an option to Ok in Some and Error in None is a case
         // common enough that it warrants a helper function (Result).
+        // ReSharper disable once UnusedVariable
         Result<SeeForecastPermissionToken, Errors> tokenOrErrorAlternative =
             maybeToken.Result<Errors>(() => new Errors.Unauthorized("Unautorized to forecast"));
 
@@ -76,10 +74,12 @@ public class WeatherForecastController : ControllerBase
 
         Result<IEnumerable<WeatherForecast>, Errors> maybeForecast =
             dataToGetOrError.Map(tuple => GetForecast(tuple.Item1, tuple.Item2));
+        // ReSharper restore SuggestVarOrType_Elsewhere
 
         return maybeForecast.Apply(EdgeOfTheWorldSync);
     }
 
+    // ReSharper disable once UnusedParameter.Local
     private static IEnumerable<WeatherForecast> GetForecast(SeeForecastPermissionToken _, int numberOfResults) =>
         Enumerable
             .Range(1, numberOfResults)
@@ -90,7 +90,6 @@ public class WeatherForecastController : ControllerBase
                 Summary = Summaries[Random.Shared.Next(Summaries.Length)]
             })
             .ToArray();
-
 
     private async Task<ActionResult<T>> EdgeOfTheWorld<T>(AsyncResult<T, Errors> result) =>
         await result.Match(t => Ok(t), MapError<T>);
@@ -119,11 +118,7 @@ public class WeatherForecastController : ControllerBase
 
     public static AsyncResult<T, Errors> Lift<T>(Task<T> task) =>
         task.Map(Ok<T, Errors>);
-
-
-
 }
-
 
 public record Errors
 {
