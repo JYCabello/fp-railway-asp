@@ -2,15 +2,120 @@ using DeFuncto;
 using DeFuncto.Extensions;
 using FpIntroWebAPI.Security;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Primitives;
 using static DeFuncto.Prelude;
 
 namespace FpIntroWebAPI.Controllers;
 
+public class MyError
+{
+    public readonly Du5<KeyMissing, KeyInvalid, UserInactive, PermissionMissing, EntityNotFound> Value;
+    public MyError(Du5<KeyMissing, KeyInvalid, UserInactive, PermissionMissing, EntityNotFound> value) =>
+        Value = value;
+
+    public static MyError KeyMissing => new(new KeyMissing());
+    public static MyError KeyInvalid => new(new KeyInvalid());
+    public static MyError UserInactive(string username) => new(new UserInactive(username));
+    public static MyError PermissionMissing(string username, string role) => new(new PermissionMissing(username, role));
+    public static MyError EntityNotFound(string message) => new(new EntityNotFound(message));
+}
+
+public class KeyMissing { }
+public class KeyInvalid { }
+
+public class UserInactive
+{
+    public UserInactive(string username) =>
+        Username = username;
+    public string Username { get; }
+}
+public class PermissionMissing
+{
+    public PermissionMissing(string username, string role)
+    {
+        Username = username;
+        Role = role;
+    }
+    public string Username { get; }
+    public string Role { get; }
+}
+
+public class EntityNotFound
+{
+    public EntityNotFound(string message) =>
+        Message = message;
+    public string Message { get; }
+}
+
+public class MyData {}
+
+public record User2(bool IsActive, string Username)
+{
+    public bool HasRole(string roleName) => true;
+}
 
 [ApiController]
 [Route("[controller]")]
 public class WeatherForecastController : ControllerBase
 {
+    public Result<string, MyError> GetKey(IDictionary<string, StringValues> dict) =>
+        dict.ContainsKey("api-key") ? dict["api-key"].ToString() : MyError.KeyMissing;
+
+    public Result<User2, MyError> GetActiveUser(string key)
+    {
+        User2? user = GetUser(key);
+        if (user == null)
+            return MyError.KeyInvalid;
+        return user.IsActive ? user : MyError.UserInactive(user.Username);
+    }
+
+    public Result<Unit, MyError> HasRole(User2 user, string role) =>
+        user.HasRole(role) ? unit : MyError.PermissionMissing(user.Username, role);
+
+    public Result<MyData, MyError> GetMyData(int id)
+    {
+        MyData? data = Fetch(id);
+        return data != null ? MyError.EntityNotFound($"Could not find data with id {id}") : data;
+    }
+
+    [HttpGet(Name = "GetData")]
+    public IActionResult GetData(int id) =>
+    (
+        from key in GetKey(Request.Headers)
+        from user in GetActiveUser(key)
+        from isAuthorized in HasRole(user, "data-getter")
+        from data in GetMyData(id)
+        select data
+    ).Match(Ok, Handle);
+
+    private MyData? Fetch(int id)
+    {
+        throw new NotImplementedException();
+    }
+
+    private User2? GetUser(string key)
+    {
+        throw new NotImplementedException();
+    }
+
+    private class ErrorResult
+    {
+        public ErrorResult(string message) =>
+            Message = message;
+
+        private string Message { get; }
+    }
+
+    protected IActionResult Handle(MyError error) =>
+        error.Value.Match<IActionResult>(
+            _ => Unauthorized(new ErrorResult("Missing key in the headers")),
+            _ => Unauthorized(new ErrorResult("Key was not recognized")),
+            inactive => Unauthorized(new ErrorResult($"User {inactive.Username} is inactive")),
+            mising => Unauthorized(new ErrorResult($"User {mising.Username} is missing permission {mising.Role}")),
+            notFound => NotFound(new ErrorResult(notFound.Message))
+        );
+
+
     private static readonly string[] Summaries =
     {
         "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
