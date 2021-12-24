@@ -3,9 +3,7 @@ using FpIntroWebAPI.Security;
 using Unity;
 using Unity.Microsoft.DependencyInjection;
 
-var app = BuilderPrimer.CreateApp();
-
-app.Run();
+BuilderPrimer.CreateApp().Run();
 
 public static class BuilderPrimer
 {
