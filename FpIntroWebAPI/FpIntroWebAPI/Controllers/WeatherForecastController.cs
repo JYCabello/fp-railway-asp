@@ -47,23 +47,39 @@ public class WeatherForecastController : ControllerBase
     [HttpGet(Name = "GetWeatherForecast")]
     public Task<IActionResult> Get() =>
     (
-        from user in securityService.GetUser(Request.Headers).MapError(Translate).Async()
-        from forecastToken in securityService.CanSeeForecast(user).Result(() => MyError.PermissionMissing(user.Name, "SeeForecast")).Async()
-        from numberOfResults in securityService.GetNumberOfResults(user).Apply(Lift)
+        from user
+            in securityService
+                .GetUser(Request.Headers)
+                .MapError(Translate)
+                .Async()
+        from forecastToken
+            in securityService
+                .CanSeeForecast(user)
+                .Result(() => MyError.PermissionMissing(user.Name, "SeeForecast"))
+                .Async()
+        from numberOfResults
+            in securityService
+                .GetNumberOfResults(user)
+                .Apply(Lift)
         select GetForecast(forecastToken, numberOfResults)
     ).Match(Ok, Handle);
 
-    // /*
-    //  * The goal of this function is to show what linq does to do the binding.
-    //  */
-    // [HttpGet("getuglylinq", Name = "GetWeatherForecastUgly")]
-    // public Task<ActionResult<IEnumerable<WeatherForecast>>> GetButDoingLinqsJob() =>
-    //     securityService.GetUser(Request.Headers).Apply(Lift)
-    //         .Bind(user => securityService.CanSeeForecast(user).Apply(opt => Lift(opt, user)).Map(token => (user, token)))
-    //         .Bind(tuple => securityService.GetNumberOfResults(tuple.user).Apply(Lift).Map(num => (tuple.token, num)))
-    //         .Map(tuple => GetForecast(tuple.token, tuple.num))
-    //         .Apply(EdgeOfTheWorld);
-    //
+    /*
+     * The goal of this function is to show what linq does to do the binding.
+     */
+    [HttpGet("getuglylinq", Name = "GetWeatherForecastUgly")]
+    public Task<IActionResult> GetButDoingLinqsJob() =>
+        securityService.GetUser(Request.Headers).MapError(Translate).Async()
+            .Bind(user =>
+                securityService
+                    .CanSeeForecast(user)
+                    .Result(() => MyError.PermissionMissing(user.Name, "SeeForecast"))
+                    .Map(token => (user, token))
+            )
+            .Bind(tuple => securityService.GetNumberOfResults(tuple.user).Apply(Lift).Map(num => (tuple.token, num)))
+            .Map(tuple => GetForecast(tuple.token, tuple.num))
+            .Match(Ok, Handle);
+
     // /*
     //  * The goal of this function is to do the binding in an "ugly" way, so it becomes obvious that those expressions are a bind.
     //  */

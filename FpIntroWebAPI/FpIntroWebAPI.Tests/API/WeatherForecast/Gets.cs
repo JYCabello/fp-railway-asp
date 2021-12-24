@@ -2,7 +2,6 @@
 using System.Linq;
 using System.Threading.Tasks;
 using DeFuncto.Assertions;
-using Flurl.Http;
 using FpIntroWebAPI.Controllers;
 using Xunit;
 using static DeFuncto.Prelude;
@@ -11,12 +10,21 @@ namespace FpIntroWebAPI.Tests.API.WeatherForecast;
 
 public class Gets
 {
-    [Fact(DisplayName = "No token gets you unauthorized")]
-    public Task NoTokenUnauthorized() =>
+    public static IEnumerable<object[]> Endpoints() =>
+        new[]
+        {
+            new object[] { "weatherforecast" },
+            new object[] { "weatherforecast/getuglylinq" },
+            new object[] { "weatherforecast/getugly" }
+        };
+
+    [Theory(DisplayName = "No token gets you unauthorized")]
+    [MemberData(nameof(Endpoints))]
+    public Task NoTokenUnauthorized(string url) =>
         Try(async () =>
             {
                 using var server = new TestServer();
-                return await server.GetFailure<WeatherForecastController.ErrorResult>("weatherforecast");
+                return await server.GetFailure<WeatherForecastController.ErrorResult>(url);
             })
             .ShouldBeOk(er =>
             {
@@ -25,13 +33,14 @@ public class Gets
                 return unit;
             });
 
-    [Fact(DisplayName = "John has no permission, so he gets unauthorized via token")]
-    public Task JohnTokenFails() =>
+    [Theory(DisplayName = "John has no permission, so he gets unauthorized via token")]
+    [MemberData(nameof(Endpoints))]
+    public Task JohnTokenFails(string url) =>
         Try(async () =>
             {
                 using var server = new TestServer();
                 return await server.GetFailure<WeatherForecastController.ErrorResult>(
-                    "weatherforecast",
+                    url,
                     new Dictionary<string, string> { { "token", "C7F558BA-4E7B-4521-B963-2D402CCD26C6" } }
                 );
             })
@@ -42,13 +51,14 @@ public class Gets
                 return unit;
             });
 
-    [Fact(DisplayName = "John has no permission, so he gets unauthorized via password")]
-    public Task JohnPasswordFails() =>
+    [Theory(DisplayName = "John has no permission, so he gets unauthorized via password")]
+    [MemberData(nameof(Endpoints))]
+    public Task JohnPasswordFails(string url) =>
         Try(async () =>
             {
                 using var server = new TestServer();
                 return await server.GetFailure<WeatherForecastController.ErrorResult>(
-                    "weatherforecast",
+                    url,
                     new Dictionary<string, string>
                     {
                         { "username", "john" },
@@ -63,13 +73,14 @@ public class Gets
                 return unit;
             });
 
-    [Fact(DisplayName = "An unknown username and password gets unauthorized")]
-    public Task UnknownUsernamePasswordUnauthorized() =>
+    [Theory(DisplayName = "An unknown username and password gets unauthorized")]
+    [MemberData(nameof(Endpoints))]
+    public Task UnknownUsernamePasswordUnauthorized(string url) =>
         Try(async () =>
             {
                 using var server = new TestServer();
                 return await server.GetFailure<WeatherForecastController.ErrorResult>(
-                    "weatherforecast",
+                    url,
                     new Dictionary<string, string>
                     {
                         { "username", "not" },
@@ -84,13 +95,14 @@ public class Gets
                 return unit;
             });
 
-    [Fact(DisplayName = "An unknown token gets unauthorized")]
-    public Task UnknownTokenUnauthorized() =>
+    [Theory(DisplayName = "An unknown token gets unauthorized")]
+    [MemberData(nameof(Endpoints))]
+    public Task UnknownTokenUnauthorized(string url) =>
         Try(async () =>
             {
                 using var server = new TestServer();
                 return await server.GetFailure<WeatherForecastController.ErrorResult>(
-                    "weatherforecast",
+                    url,
                     new Dictionary<string, string> { { "token", "EEB41A50-F3E1-4F78-B371-54BDF3EA93D1" } }
                 );
             })
@@ -101,13 +113,14 @@ public class Gets
                 return unit;
             });
 
-    [Fact(DisplayName = "Frank should get five results with a token")]
-    public Task FrankTokenGetsFive() =>
+    [Theory(DisplayName = "Frank should get five results with a token")]
+    [MemberData(nameof(Endpoints))]
+    public Task FrankTokenGetsFive(string url) =>
         Try(async () =>
             {
                 using var server = new TestServer();
                 return await server.Get<IEnumerable<FpIntroWebAPI.WeatherForecast>>(
-                    "weatherforecast",
+                    url,
                     new Dictionary<string, string> { { "token", "E43C80F5-62B7-424E-86E3-56BBA8F14793" } }
                 );
             })
@@ -117,13 +130,14 @@ public class Gets
                 return unit;
             });
 
-    [Fact(DisplayName = "Frank should get five results with password")]
-    public Task FrankPasswordGetsFive() =>
+    [Theory(DisplayName = "Frank should get five results with password")]
+    [MemberData(nameof(Endpoints))]
+    public Task FrankPasswordGetsFive(string url) =>
         Try(async () =>
             {
                 using var server = new TestServer();
                 return await server.Get<IEnumerable<FpIntroWebAPI.WeatherForecast>>(
-                    "weatherforecast",
+                    url,
                     new Dictionary<string, string>
                     {
                         { "username", "frank" },
@@ -137,13 +151,14 @@ public class Gets
                 return unit;
             });
 
-    [Fact(DisplayName = "Pete should get ten results with a token")]
-    public Task PeteTokenGetsMore() =>
+    [Theory(DisplayName = "Pete should get ten results with a token")]
+    [MemberData(nameof(Endpoints))]
+    public Task PeteTokenGetsMore(string url) =>
         Try(async () =>
             {
                 using var server = new TestServer();
                 return await server.Get<IEnumerable<FpIntroWebAPI.WeatherForecast>>(
-                    "weatherforecast",
+                    url,
                     new Dictionary<string, string> { { "token", "519CD0A5-65F6-47AA-9931-A87946920BF8" } }
                 );
             })
@@ -153,13 +168,14 @@ public class Gets
                 return unit;
             });
 
-    [Fact(DisplayName = "Pete should get ten results with password")]
-    public Task PetePasswordGetsMore() =>
+    [Theory(DisplayName = "Pete should get ten results with password")]
+    [MemberData(nameof(Endpoints))]
+    public Task PetePasswordGetsMore(string url) =>
         Try(async () =>
             {
                 using var server = new TestServer();
                 return await server.Get<IEnumerable<FpIntroWebAPI.WeatherForecast>>(
-                    "weatherforecast",
+                    url,
                     new Dictionary<string, string>
                     {
                         { "username", "pete" },
