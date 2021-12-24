@@ -8,7 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="DeFuncto.Core" Version="0.2.13" />
+    <PackageReference Include="DeFuncto.Core" Version="0.2.14" />
     <PackageReference Include="Microsoft.Extensions.Primitives" Version="6.0.0" />
   </ItemGroup>
 
