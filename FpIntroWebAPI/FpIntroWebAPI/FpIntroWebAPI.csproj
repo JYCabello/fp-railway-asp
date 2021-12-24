@@ -10,6 +10,10 @@
     <ItemGroup>
         <PackageReference Include="DeFuncto.Core" Version="0.2.13" />
         <PackageReference Include="Swashbuckle.AspNetCore" Version="6.2.3" />
+        <PackageReference Include="Unity" Version="5.11.10" />
+        <PackageReference Include="Unity.Abstractions" Version="5.11.7" />
+        <PackageReference Include="Unity.Container" Version="5.11.11" />
+        <PackageReference Include="Unity.Microsoft.DependencyInjection" Version="5.11.5" />
     </ItemGroup>
 
     <ItemGroup>

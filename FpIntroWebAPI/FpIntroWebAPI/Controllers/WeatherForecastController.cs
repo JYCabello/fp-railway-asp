@@ -54,14 +54,19 @@ public record User2(bool IsActive, string Username)
     public bool HasRole(string roleName) => true;
 }
 
+public static class Meh
+{
+
+}
+
 [ApiController]
 [Route("[controller]")]
 public class WeatherForecastController : ControllerBase
 {
-    public Result<string, MyError> GetKey(IDictionary<string, StringValues> dict) =>
+    public static Result<string, MyError> GetKey(IDictionary<string, StringValues> dict) =>
         dict.ContainsKey("api-key") ? dict["api-key"].ToString() : MyError.KeyMissing;
 
-    public Result<User2, MyError> GetActiveUser(string key)
+    public static  Result<User2, MyError> GetActiveUser(string key)
     {
         User2? user = GetUser(key);
         if (user == null)
@@ -69,16 +74,16 @@ public class WeatherForecastController : ControllerBase
         return user.IsActive ? user : MyError.UserInactive(user.Username);
     }
 
-    public Result<Unit, MyError> HasRole(User2 user, string role) =>
+    public static  Result<Unit, MyError> HasRole(User2 user, string role) =>
         user.HasRole(role) ? unit : MyError.PermissionMissing(user.Username, role);
 
-    public Result<MyData, MyError> GetMyData(int id)
+    public static  Result<MyData, MyError> GetMyData(int id)
     {
         MyData? data = Fetch(id);
         return data != null ? MyError.EntityNotFound($"Could not find data with id {id}") : data;
     }
 
-    [HttpGet(Name = "GetData")]
+    [HttpGet("getdata", Name = "GetData")]
     public IActionResult GetData(int id) =>
     (
         from key in GetKey(Request.Headers)
@@ -88,12 +93,12 @@ public class WeatherForecastController : ControllerBase
         select data
     ).Match(Ok, Handle);
 
-    private MyData? Fetch(int id)
+    private static  MyData? Fetch(int id)
     {
         throw new NotImplementedException();
     }
 
-    private User2? GetUser(string key)
+    private static  User2? GetUser(string key)
     {
         throw new NotImplementedException();
     }
