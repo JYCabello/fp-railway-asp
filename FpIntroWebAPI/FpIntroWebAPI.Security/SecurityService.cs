@@ -5,7 +5,14 @@ using static DeFuncto.Prelude;
 
 namespace FpIntroWebAPI.Security;
 
-public static class SecurityService
+public interface ISecurityService
+{
+    Option<User> GetUser(IDictionary<string, StringValues> dict);
+    Option<SeeForecastPermissionToken> CanSeeForecast(User user);
+    Task<int> GetNumberOfResults(User user);
+}
+
+public class SecurityService : ISecurityService
 {
     private static readonly User John = new("John", Role.Nobody);
     private static readonly User Frank = new("Frank", Role.Admin);
@@ -43,7 +50,7 @@ public static class SecurityService
         }
     }
 
-    public static Option<User> GetUser(IDictionary<string, StringValues> dict)
+    public Option<User> GetUser(IDictionary<string, StringValues> dict)
     {
         try
         {
@@ -62,10 +69,10 @@ public static class SecurityService
         }
     }
 
-    public static Option<SeeForecastPermissionToken> CanSeeForecast(User user) =>
+    public Option<SeeForecastPermissionToken> CanSeeForecast(User user) =>
         user.Role == Role.Admin ? new SeeForecastPermissionToken() : None;
 
-    public static Task<int> GetNumberOfResults(User user) =>
+    public Task<int> GetNumberOfResults(User user) =>
         Task.FromResult(user.Name == "Pete" ? 10 : 5);
 }
 

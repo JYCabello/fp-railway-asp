@@ -126,17 +126,21 @@ public class WeatherForecastController : ControllerBase
         "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
     };
 
-    private readonly ILogger<WeatherForecastController> _logger;
+    private readonly ILogger<WeatherForecastController> logger;
+    private readonly ISecurityService securityService;
 
-    public WeatherForecastController(ILogger<WeatherForecastController> logger) =>
-        _logger = logger;
+    public WeatherForecastController(ILogger<WeatherForecastController> logger, ISecurityService securityService)
+    {
+        this.logger = logger;
+        this.securityService = securityService;
+    }
 
     [HttpGet(Name = "GetWeatherForecast")]
     public Task<ActionResult<IEnumerable<WeatherForecast>>> Get() =>
     (
-        from user in SecurityService.GetUser(Request.Headers).Apply(Lift)
-        from forecastToken in SecurityService.CanSeeForecast(user).Apply(opt => Lift(opt, user))
-        from numberOfResults in SecurityService.GetNumberOfResults(user).Apply(Lift)
+        from user in securityService.GetUser(Request.Headers).Apply(Lift)
+        from forecastToken in securityService.CanSeeForecast(user).Apply(opt => Lift(opt, user))
+        from numberOfResults in securityService.GetNumberOfResults(user).Apply(Lift)
         select GetForecast(forecastToken, numberOfResults)
     ).Apply(EdgeOfTheWorld);
 
@@ -145,9 +149,9 @@ public class WeatherForecastController : ControllerBase
      */
     [HttpGet("getuglylinq", Name = "GetWeatherForecastUgly")]
     public Task<ActionResult<IEnumerable<WeatherForecast>>> GetButDoingLinqsJob() =>
-        SecurityService.GetUser(Request.Headers).Apply(Lift)
-            .Bind(user => SecurityService.CanSeeForecast(user).Apply(opt => Lift(opt, user)).Map(token => (user, token)))
-            .Bind(tuple => SecurityService.GetNumberOfResults(tuple.user).Apply(Lift).Map(num => (tuple.token, num)))
+        securityService.GetUser(Request.Headers).Apply(Lift)
+            .Bind(user => securityService.CanSeeForecast(user).Apply(opt => Lift(opt, user)).Map(token => (user, token)))
+            .Bind(tuple => securityService.GetNumberOfResults(tuple.user).Apply(Lift).Map(num => (tuple.token, num)))
             .Map(tuple => GetForecast(tuple.token, tuple.num))
             .Apply(EdgeOfTheWorld);
 
@@ -158,12 +162,12 @@ public class WeatherForecastController : ControllerBase
     public async Task<ActionResult<IEnumerable<WeatherForecast>>> GetButUgly()
     {
         // ReSharper disable SuggestVarOrType_Elsewhere
-        Option<User> maybeUser = SecurityService.GetUser(Request.Headers);
+        Option<User> maybeUser = securityService.GetUser(Request.Headers);
 
-        Option<SeeForecastPermissionToken> maybeToken = maybeUser.Bind(user => SecurityService.CanSeeForecast(user));
+        Option<SeeForecastPermissionToken> maybeToken = maybeUser.Bind(user => securityService.CanSeeForecast(user));
 
         Result<int, Errors> maybeNumberOfResult = await maybeUser.Match(
-            user => SecurityService.GetNumberOfResults(user).Map(Ok<int, Errors>),
+            user => securityService.GetNumberOfResults(user).Map(Ok<int, Errors>),
             () => new Errors.Unauthorized("User was not found").Apply(Error<int, Errors>).Apply(Task.FromResult)
         );
 
@@ -216,7 +220,7 @@ public class WeatherForecastController : ControllerBase
 
     private ActionResult<T> OnUnauthorized<T>(Errors.Unauthorized error)
     {
-        _logger.LogError("Someone tried to access the system\n{Message}", error.Message);
+        logger.LogError("Someone tried to access the system\n{Message}", error.Message);
         return Unauthorized();
     }
 

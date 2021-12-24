@@ -1,4 +1,5 @@
 using System.Reflection;
+using FpIntroWebAPI.Security;
 using Unity;
 using Unity.Microsoft.DependencyInjection;
 
@@ -36,5 +37,6 @@ public static class BuilderPrimer
     }
 
     public static IUnityContainer GetUnityContainer() =>
-        new UnityContainer();
+        new UnityContainer()
+            .RegisterSingleton<ISecurityService, SecurityService>();
 }
