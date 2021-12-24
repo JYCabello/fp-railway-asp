@@ -70,8 +70,8 @@ public class WeatherForecastController : ControllerBase
 
     protected IActionResult Handle(MyError error) =>
         error.Value.Match<IActionResult>(
-            _ => Unauthorized(new ErrorResult("Missing key in the headers")),
-            _ => Unauthorized(new ErrorResult("Key was not recognized")),
+            _ => Unauthorized(new ErrorResult("Missing token in the headers")),
+            _ => Unauthorized(new ErrorResult("Token was not recognized")),
             inactive => Unauthorized(new ErrorResult($"User {inactive.Username} is inactive")),
             mising => Unauthorized(new ErrorResult($"User {mising.Username} does not have role {mising.Role}")),
             notFound => NotFound(new ErrorResult(notFound.Message))

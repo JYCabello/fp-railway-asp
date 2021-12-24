@@ -11,6 +11,20 @@ namespace FpIntroWebAPI.Tests.API.WeatherForecast;
 
 public class Gets
 {
+    [Fact(DisplayName = "No token gets you unauthorized")]
+    public Task NoTokenUnauthorized() =>
+        Try(async () =>
+            {
+                using var server = new TestServer();
+                return await server.GetFailure<WeatherForecastController.ErrorResult>("weatherforecast");
+            })
+            .ShouldBeOk(er =>
+            {
+                Assert.Equal(401, er.code);
+                Assert.Contains("Missing token in the headers", er.result.Message);
+                return unit;
+            });
+
     [Fact(DisplayName = "John has no permission, so he gets unauthorized via token")]
     public Task JohnTokenFails() =>
         Try(async () =>
@@ -75,17 +89,15 @@ public class Gets
         Try(async () =>
             {
                 using var server = new TestServer();
-                await server.Get<IEnumerable<FpIntroWebAPI.WeatherForecast>>(
+                return await server.GetFailure<WeatherForecastController.ErrorResult>(
                     "weatherforecast",
                     new Dictionary<string, string> { { "token", "EEB41A50-F3E1-4F78-B371-54BDF3EA93D1" } }
                 );
-                return unit;
             })
-            .ShouldBeError(ex =>
+            .ShouldBeOk(er =>
             {
-                Assert.IsType<FlurlHttpException>(ex);
-                var fex = (ex as FlurlHttpException)!;
-                Assert.Equal(401, fex.StatusCode);
+                Assert.Equal(401, er.code);
+                Assert.Contains("Token was not recognized", er.result.Message);
                 return unit;
             });
 
