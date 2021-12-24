@@ -5,7 +5,21 @@ using static DeFuncto.Prelude;
 
 namespace FpIntroWebAPI.Security;
 
-public static class SecurityService
+public enum CredentialsFailed
+{
+    None,
+    Token,
+    UsernamePassword
+}
+
+public interface ISecurityService
+{
+    Result<User, CredentialsFailed> GetUser(IDictionary<string, StringValues> dict);
+    Option<SeeForecastPermissionToken> CanSeeForecast(User user);
+    Task<int> GetNumberOfResults(User user);
+}
+
+public class SecurityService : ISecurityService
 {
     private static readonly User John = new("John", Role.Nobody);
     private static readonly User Frank = new("Frank", Role.Admin);
@@ -22,10 +36,11 @@ public static class SecurityService
     private static readonly Dictionary<string, User> ByUserNamePassword = new()
     {
         { "frankpete", Frank },
-        { "petepete", Pete }
+        { "petepete", Pete },
+        { "johnfrank", John }
     };
 
-    public static Option<Du<Guid, (string, string)>> GetIdentifier(IDictionary<string, StringValues> dict)
+    public static Result<Du<Guid, (string un, string pw)>, CredentialsFailed> GetIdentifier(IDictionary<string, StringValues> dict)
     {
         try
         {
@@ -38,33 +53,30 @@ public static class SecurityService
         }
         catch
         {
-            return None;
+            return CredentialsFailed.None;
         }
     }
 
-    public static Option<User> GetUser(IDictionary<string, StringValues> dict)
-    {
-        try
-        {
-            return GetIdentifier(dict)
-                .Map(
-                    du =>
-                        du.Match(
-                            guid => ByToken[guid],
-                            tuple => ByUserNamePassword[$"{tuple.Item1}{tuple.Item2}"]
-                        )
-                );
-        }
-        catch
-        {
-            return None;
-        }
-    }
+    public Result<User, CredentialsFailed> GetUser(IDictionary<string, StringValues> dict) =>
+        GetIdentifier(dict)
+            .Bind(
+                du =>
+                    du.Match<Result<User, CredentialsFailed>>(
+                        guid =>
+                            ByToken.ContainsKey(guid)
+                                ? ByToken[guid]
+                                : CredentialsFailed.Token,
+                        tuple =>
+                            ByUserNamePassword.ContainsKey($"{tuple.un}{tuple.pw}")
+                                ? ByUserNamePassword[$"{tuple.un}{tuple.pw}"]
+                                : CredentialsFailed.UsernamePassword
+                    )
+            );
 
-    public static Option<SeeForecastPermissionToken> CanSeeForecast(User user) =>
+    public Option<SeeForecastPermissionToken> CanSeeForecast(User user) =>
         user.Role == Role.Admin ? new SeeForecastPermissionToken() : None;
 
-    public static Task<int> GetNumberOfResults(User user) =>
+    public Task<int> GetNumberOfResults(User user) =>
         Task.FromResult(user.Name == "Pete" ? 10 : 5);
 }
 

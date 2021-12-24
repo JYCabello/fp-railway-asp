@@ -1,25 +1,40 @@
-var builder = WebApplication.CreateBuilder(args);
+using System.Reflection;
+using FpIntroWebAPI.Security;
+using Unity;
+using Unity.Microsoft.DependencyInjection;
 
-// Add services to the container.
+BuilderPrimer.CreateApp().Run();
 
-builder.Services.AddControllers();
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
-
-var app = builder.Build();
-
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
+public static class BuilderPrimer
 {
-    app.UseSwagger();
-    app.UseSwaggerUI();
+    public static WebApplication CreateApp(IUnityContainer? container = null)
+    {
+        var app = CreateBuilder(container).Build();
+        if (app.Environment.IsDevelopment())
+        {
+            app.UseSwagger();
+            app.UseSwaggerUI();
+        }
+        app.UseHttpsRedirection();
+        app.UseAuthorization();
+        app.MapControllers();
+        return app;
+    }
+
+    public static WebApplicationBuilder CreateBuilder(IUnityContainer? container = null)
+    {
+        var builder = WebApplication.CreateBuilder();
+        builder.Host.UseUnityServiceProvider(container ?? GetUnityContainer());
+        builder.Services.AddControllers();
+        builder.Services.AddEndpointsApiExplorer();
+        builder.Services.AddSwaggerGen();
+        // Needed for the functional tests. app.MapControllers() uses the calling assembly, not finding the controllers
+        var assembly = Assembly.GetExecutingAssembly();
+        builder.Services.AddMvcCore().AddApplicationPart(assembly).AddRazorViewEngine();
+        return builder;
+    }
+
+    public static IUnityContainer GetUnityContainer() =>
+        new UnityContainer()
+            .RegisterSingleton<ISecurityService, SecurityService>();
 }
-
-app.UseHttpsRedirection();
-
-app.UseAuthorization();
-
-app.MapControllers();
-
-app.Run();
