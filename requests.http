@@ -1,16 +1,6 @@
 # This is meant to be used with the REST Client extension in VS Code
 
 ###
-# Unknown
-GET https://localhost:7176/weatherforecast
-token: EEB41A50-F3E1-4F78-B371-54BDF3EA93D1
-
-###
-# Pete
-GET https://localhost:7176/weatherforecast
-token: 519CD0A5-65F6-47AA-9931-A87946920BF8
-
-###
 # Pete with password
 GET https://localhost:7176/weatherforecast
 username: pete

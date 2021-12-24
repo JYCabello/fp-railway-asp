@@ -12,6 +12,7 @@ public class Gets
 {
     public static readonly string JohnToken = "C7F558BA-4E7B-4521-B963-2D402CCD26C6";
     public static readonly string FrankToken = "E43C80F5-62B7-424E-86E3-56BBA8F14793";
+    public static readonly string PeteToken = "519CD0A5-65F6-47AA-9931-A87946920BF8";
     public static readonly string UnknownToken = "EEB41A50-F3E1-4F78-B371-54BDF3EA93D1";
 
     [Fact(DisplayName = "John has no permission, so he gets unauthorized")]
@@ -65,6 +66,22 @@ public class Gets
             .ShouldBeOk(forecasts =>
             {
                 Assert.Equal(5, forecasts.Count());
+                return unit;
+            });
+
+    [Fact(DisplayName = "Pete should get ten results with a token")]
+    public Task PeteGetsMore() =>
+        Try(async () =>
+            {
+                using var server = new TestServer();
+                return await server.Get<IEnumerable<FpIntroWebAPI.WeatherForecast>>(
+                    "weatherforecast",
+                    new Dictionary<string, string> { { "token", PeteToken } }
+                );
+            })
+            .ShouldBeOk(forecasts =>
+            {
+                Assert.Equal(10, forecasts.Count());
                 return unit;
             });
 }
