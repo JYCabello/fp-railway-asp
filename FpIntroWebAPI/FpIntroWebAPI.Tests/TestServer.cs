@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using DeFuncto.Extensions;
 using Flurl.Http;
 using Flurl.Http.Configuration;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Hosting;
 using Newtonsoft.Json;
@@ -28,11 +29,11 @@ public class TestServer : IDisposable
     public TestServer()
     {
         int port = GetPort();
-        var builder = BuilderPrimer.CreateBuilder(TestLocator.Get<IUnityContainer>());
-        builder.Host.ConfigureWebHostDefaults(wh => wh.UseUrls($"http://localhost:{port}"));
-        host = builder.Build();
-        host.Start();
-        url = $"http://localhost:{port}/";
+        url = $"https://localhost:{port}/";
+        var webApp = BuilderPrimer.CreateApp(TestLocator.Get<IUnityContainer>());
+        webApp.Urls.Add(url);
+        webApp.Start();
+        host = webApp;
     }
 
     private static int RandomPort => Rn.Next(30_000) + 10_000;
