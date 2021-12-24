@@ -3,6 +3,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using DeFuncto.Assertions;
 using Flurl.Http;
+using FpIntroWebAPI.Controllers;
 using Xunit;
 using static DeFuncto.Prelude;
 
@@ -15,17 +16,15 @@ public class Gets
         Try(async () =>
             {
                 using var server = new TestServer();
-                await server.Get<IEnumerable<FpIntroWebAPI.WeatherForecast>>(
+                return await server.GetFailure<WeatherForecastController.ErrorResult>(
                     "weatherforecast",
                     new Dictionary<string, string> { { "token", "C7F558BA-4E7B-4521-B963-2D402CCD26C6" } }
                 );
-                return unit;
             })
-            .ShouldBeError(ex =>
+            .ShouldBeOk(er =>
             {
-                Assert.IsType<FlurlHttpException>(ex);
-                var fex = (ex as FlurlHttpException)!;
-                Assert.Equal(401, fex.StatusCode);
+                Assert.Equal(401, er.code);
+                Assert.Contains("User John does not have role Admin", er.result.Message);
                 return unit;
             });
 
@@ -34,7 +33,7 @@ public class Gets
         Try(async () =>
             {
                 using var server = new TestServer();
-                await server.Get<IEnumerable<FpIntroWebAPI.WeatherForecast>>(
+                return await server.GetFailure<WeatherForecastController.ErrorResult>(
                     "weatherforecast",
                     new Dictionary<string, string>
                     {
@@ -42,22 +41,20 @@ public class Gets
                         { "password", "frank" }
                     }
                 );
-                return unit;
             })
-            .ShouldBeError(ex =>
+            .ShouldBeOk(er =>
             {
-                Assert.IsType<FlurlHttpException>(ex);
-                var fex = (ex as FlurlHttpException)!;
-                Assert.Equal(401, fex.StatusCode);
+                Assert.Equal(401, er.code);
+                Assert.Contains("User John does not have role Admin", er.result.Message);
                 return unit;
             });
 
-    [Fact(DisplayName = "An unknown token gets unauthorized")]
+    [Fact(DisplayName = "An unknown username and password gets unauthorized")]
     public Task UnknownUsernamePasswordUnauthorized() =>
         Try(async () =>
             {
                 using var server = new TestServer();
-                await server.Get<IEnumerable<FpIntroWebAPI.WeatherForecast>>(
+                return await server.GetFailure<WeatherForecastController.ErrorResult>(
                     "weatherforecast",
                     new Dictionary<string, string>
                     {
@@ -65,17 +62,15 @@ public class Gets
                         { "password", "there" }
                     }
                 );
-                return unit;
             })
-            .ShouldBeError(ex =>
+            .ShouldBeOk(er =>
             {
-                Assert.IsType<FlurlHttpException>(ex);
-                var fex = (ex as FlurlHttpException)!;
-                Assert.Equal(401, fex.StatusCode);
+                Assert.Equal(401, er.code);
+                Assert.Contains("Username and password combination was incorrect", er.result.Message);
                 return unit;
             });
 
-    [Fact(DisplayName = "An unknown username and password gets unauthorized")]
+    [Fact(DisplayName = "An unknown token gets unauthorized")]
     public Task UnknownTokenUnauthorized() =>
         Try(async () =>
             {

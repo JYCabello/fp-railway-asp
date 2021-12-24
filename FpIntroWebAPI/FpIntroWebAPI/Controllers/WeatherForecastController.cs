@@ -60,12 +60,12 @@ public class WeatherForecastController : ControllerBase
         throw new NotImplementedException();
     }
 
-    private class ErrorResult
+    public class ErrorResult
     {
         public ErrorResult(string message) =>
             Message = message;
 
-        private string Message { get; }
+        public string Message { get; }
     }
 
     protected IActionResult Handle(MyError error) =>
@@ -73,7 +73,7 @@ public class WeatherForecastController : ControllerBase
             _ => Unauthorized(new ErrorResult("Missing key in the headers")),
             _ => Unauthorized(new ErrorResult("Key was not recognized")),
             inactive => Unauthorized(new ErrorResult($"User {inactive.Username} is inactive")),
-            mising => Unauthorized(new ErrorResult($"User {mising.Username} is missing permission {mising.Role}")),
+            mising => Unauthorized(new ErrorResult($"User {mising.Username} does not have role {mising.Role}")),
             notFound => NotFound(new ErrorResult(notFound.Message))
         );
 

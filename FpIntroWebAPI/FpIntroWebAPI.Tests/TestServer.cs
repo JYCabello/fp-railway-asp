@@ -4,13 +4,8 @@ using System.Linq;
 using System.Net.NetworkInformation;
 using System.Threading;
 using System.Threading.Tasks;
-using DeFuncto.Extensions;
 using Flurl.Http;
-using Flurl.Http.Configuration;
-using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Hosting;
-using Newtonsoft.Json;
 using Unity;
 using static Flurl.GeneratedExtensions;
 
@@ -59,16 +54,6 @@ public class TestServer : IDisposable
 
     private IFlurlRequest BaseReq(string path, Dictionary<string, string>? headers = null, Dictionary<string, string>? queryParams = null)
     {
-        // To make sure both serializers work.
-        if (Rn.Next(10) % 2 == 0)
-            FlurlHttp.Configure(settings =>
-                settings.JsonSerializer = new JsonSerializerSettings
-                {
-                    NullValueHandling = NullValueHandling.Ignore,
-                    ObjectCreationHandling = ObjectCreationHandling.Replace
-                }.Apply(jss => new NewtonsoftJsonSerializer(jss))
-            );
-
         var request = url
             .AppendPathSegment(path)
             .WithHeaders(headers ?? new Dictionary<string, string>());
@@ -83,4 +68,14 @@ public class TestServer : IDisposable
 
     public Task<T> Get<T>(string path, Dictionary<string, string>? headers = null, Dictionary<string, string>? queryParams = null) =>
         BaseReq(path, headers, queryParams).GetJsonAsync<T>();
+
+    public async Task<(int code, T result)> GetFailure<T>(string path, Dictionary<string, string>? headers = null, Dictionary<string, string>? queryParams = null)
+    {
+        var response = await BaseReq(path, headers, queryParams)
+            .AllowAnyHttpStatus()
+            .GetAsync();
+        var t = await response.GetJsonAsync<T>();
+        var code = response.StatusCode;
+        return (code, t);
+    }
 }
