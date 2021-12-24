@@ -13,17 +13,16 @@ public class Gets
     public static readonly string JohnToken = "C7F558BA-4E7B-4521-B963-2D402CCD26C6";
 
     [Fact(DisplayName = "John has no permission, so he gets unauthorized")]
-    public async Task JohnTokenFails()
-    {
-        using var server = new TestServer();
-        await Try(async () =>
-        {
-            await server.Get<IEnumerable<FpIntroWebAPI.WeatherForecast>>(
-                "weatherforecast",
-                new Dictionary<string, string> { { "token", JohnToken } }
-            );
-            return unit;
-        })
+    public Task JohnTokenFails() =>
+        Try(async () =>
+            {
+                using var server = new TestServer();
+                await server.Get<IEnumerable<FpIntroWebAPI.WeatherForecast>>(
+                    "weatherforecast",
+                    new Dictionary<string, string> { { "token", JohnToken } }
+                );
+                return unit;
+            })
             .ShouldBeError(ex =>
             {
                 Assert.IsType<FlurlHttpException>(ex);
@@ -31,5 +30,4 @@ public class Gets
                 Assert.Equal(401, fex.StatusCode);
                 return unit;
             });
-    }
 }
