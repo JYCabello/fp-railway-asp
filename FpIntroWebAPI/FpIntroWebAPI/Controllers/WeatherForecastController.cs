@@ -2,67 +2,46 @@ using DeFuncto;
 using DeFuncto.Extensions;
 using FpIntroWebAPI.Security;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Primitives;
 using static DeFuncto.Prelude;
 
 namespace FpIntroWebAPI.Controllers;
-
 
 [ApiController]
 [Route("[controller]")]
 public class WeatherForecastController : ControllerBase
 {
-    public class ErrorResult
+    private static readonly string[] Summaries =
     {
-        public ErrorResult(string message) =>
-            Message = message;
+        "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
+    };
 
-        public string Message { get; }
-    }
+    private readonly ISecurityService securityService;
+
+    public WeatherForecastController(ISecurityService securityService) =>
+        this.securityService = securityService;
 
     protected IActionResult Handle(MyError error) =>
         error.Value.Match<ActionResult>(
             _ => Unauthorized(new ErrorResult("Missing token in the headers")),
             _ => Unauthorized(new ErrorResult("Token was not recognized")),
             _ => Unauthorized(new ErrorResult("Username and password combination was incorrect")),
-            mising => Unauthorized(new ErrorResult($"User {mising.Username} does not have role {mising.Role}")),
-            notFound => NotFound(new ErrorResult(notFound.Message))
+            mising => Unauthorized(new ErrorResult($"User {mising.Username} does not have role {mising.Role}"))
         );
-
-
-    private static readonly string[] Summaries =
-    {
-        "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-    };
-
-    private readonly ILogger<WeatherForecastController> logger;
-    private readonly ISecurityService securityService;
-
-    public WeatherForecastController(ILogger<WeatherForecastController> logger, ISecurityService securityService)
-    {
-        this.logger = logger;
-        this.securityService = securityService;
-    }
 
     [HttpGet(Name = "GetWeatherForecast")]
     public Task<IActionResult> Get() =>
     (
-        from user
-            in securityService.GetUser(Request.Headers).Apply(Lift)
-        from forecastToken
-            in securityService
-                .CanSeeForecast(user)
-                .Result(() => MyError.PermissionMissing(user.Name, "SeeForecast"))
-                .Async()
-        from numberOfResults
-            in securityService
-                .GetNumberOfResults(user)
-                .Apply(Lift)
+        from user in securityService.GetUser(Request.Headers).Apply(Lift)
+        from forecastToken in securityService.CanSeeForecast(user).Apply(opt => Lift(opt, user))
+        from numberOfResults in securityService.GetNumberOfResults(user).Apply(Lift)
         select GetForecast(forecastToken, numberOfResults)
     ).Match(Ok, Handle);
 
-    public AsyncResult<User, MyError> Lift(Result<User, CredentialsFailed> result) =>
+    private AsyncResult<User, MyError> Lift(Result<User, CredentialsFailed> result) =>
         result.MapError(Translate).Async();
+
+    private AsyncResult<SeeForecastPermissionToken, MyError> Lift(Option<SeeForecastPermissionToken> option, User user) =>
+        option.Result(() => MyError.PermissionMissing(user.Name, "SeeForecast")).Async();
 
     /*
      * The goal of this function is to show what linq does to do the binding.
@@ -136,4 +115,12 @@ public class WeatherForecastController : ControllerBase
             CredentialsFailed.UsernamePassword => MyError.UsernamePasswordInvalid,
             _ => throw new ArgumentOutOfRangeException(nameof(creds), creds, null)
         };
+
+    public class ErrorResult
+    {
+        public ErrorResult(string message) =>
+            Message = message;
+
+        public string Message { get; }
+    }
 }
