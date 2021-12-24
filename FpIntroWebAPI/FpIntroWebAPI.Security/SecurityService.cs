@@ -22,7 +22,8 @@ public static class SecurityService
     private static readonly Dictionary<string, User> ByUserNamePassword = new()
     {
         { "frankpete", Frank },
-        { "petepete", Pete }
+        { "petepete", Pete },
+        { "johnfrank", John }
     };
 
     public static Option<Du<Guid, (string, string)>> GetIdentifier(IDictionary<string, StringValues> dict)
