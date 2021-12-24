@@ -38,7 +38,7 @@ public class Gets
             .ShouldBeOk(er =>
             {
                 Assert.Equal(401, er.code);
-                Assert.Contains("User John does not have role Admin", er.result.Message);
+                Assert.Contains("User John does not have role SeeForecast", er.result.Message);
                 return unit;
             });
 
@@ -59,7 +59,7 @@ public class Gets
             .ShouldBeOk(er =>
             {
                 Assert.Equal(401, er.code);
-                Assert.Contains("User John does not have role Admin", er.result.Message);
+                Assert.Contains("User John does not have role SeeForecast", er.result.Message);
                 return unit;
             });
 

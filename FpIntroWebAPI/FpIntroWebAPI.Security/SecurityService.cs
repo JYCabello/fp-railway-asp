@@ -5,9 +5,16 @@ using static DeFuncto.Prelude;
 
 namespace FpIntroWebAPI.Security;
 
+public enum CredentialsFailed
+{
+    None,
+    Token,
+    UsernamePassword
+}
+
 public interface ISecurityService
 {
-    Option<User> GetUser(IDictionary<string, StringValues> dict);
+    Result<User, CredentialsFailed> GetUser(IDictionary<string, StringValues> dict);
     Option<SeeForecastPermissionToken> CanSeeForecast(User user);
     Task<int> GetNumberOfResults(User user);
 }
@@ -33,7 +40,7 @@ public class SecurityService : ISecurityService
         { "johnfrank", John }
     };
 
-    public static Option<Du<Guid, (string, string)>> GetIdentifier(IDictionary<string, StringValues> dict)
+    public static Result<Du<Guid, (string un, string pw)>, CredentialsFailed> GetIdentifier(IDictionary<string, StringValues> dict)
     {
         try
         {
@@ -46,28 +53,25 @@ public class SecurityService : ISecurityService
         }
         catch
         {
-            return None;
+            return CredentialsFailed.None;
         }
     }
 
-    public Option<User> GetUser(IDictionary<string, StringValues> dict)
-    {
-        try
-        {
-            return GetIdentifier(dict)
-                .Map(
-                    du =>
-                        du.Match(
-                            guid => ByToken[guid],
-                            tuple => ByUserNamePassword[$"{tuple.Item1}{tuple.Item2}"]
-                        )
-                );
-        }
-        catch
-        {
-            return None;
-        }
-    }
+    public Result<User, CredentialsFailed> GetUser(IDictionary<string, StringValues> dict) =>
+        GetIdentifier(dict)
+            .Bind(
+                du =>
+                    du.Match<Result<User, CredentialsFailed>>(
+                        guid =>
+                            ByToken.ContainsKey(guid)
+                                ? ByToken[guid]
+                                : CredentialsFailed.Token,
+                        tuple =>
+                            ByUserNamePassword.ContainsKey($"{tuple.un}{tuple.pw}")
+                                ? ByUserNamePassword[$"{tuple.un}{tuple.pw}"]
+                                : CredentialsFailed.UsernamePassword
+                    )
+            );
 
     public Option<SeeForecastPermissionToken> CanSeeForecast(User user) =>
         user.Role == Role.Admin ? new SeeForecastPermissionToken() : None;
